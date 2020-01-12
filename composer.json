@@ -1,0 +1,19 @@
+{
+    "name": "liftmode/magento2-payment-pmccoingroup",
+    "description": "Credit Card payment module for Magento 2 via PMCCoinGroip.",
+    "type": "magento2-module",
+    "require": {
+        "magento/framework": "102.0.*",
+        "php": "~7.1.3||~7.2.0"
+    },
+    "license": [
+        "MIT"
+    ],
+    "version": "0.0.1",
+    "autoload": {
+        "files": [ "registration.php" ],
+        "psr-4": {
+            "Liftmode\\PMCCoinGroup\\": ""
+        }
+    }
+}
