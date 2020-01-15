@@ -86,7 +86,7 @@ class PMCCoinGroup extends \Magento\Payment\Model\Method\Cc
 
         $this->_curl->setOption(CURLOPT_HTTPHEADER, $this->_getExtraHeaders());
 
-        $this->_curl->get($this->getURL() . '/v1/customers', array(
+        $this->_curl->get($this->_scopeConfig->getValue('payment/pmccoingroup/apiurl') . '/v1/customers', array(
             'page' => 1,
             'perPage' => 3,
             'search' => strval($order->getCustomerEmail())
@@ -127,7 +127,7 @@ class PMCCoinGroup extends \Magento\Payment\Model\Method\Cc
             );
         }
 
-        $this->_curl->post($this->getURL() . '/v1/charges', $data);
+        $this->_curl->post($this->_scopeConfig->getValue('payment/pmccoingroup/apiurl') . '/v1/charges', $data);
 
         return $this->_doValidate(json_decode($this->_curl->getBody(), TRUE), json_encode($data));
     }
