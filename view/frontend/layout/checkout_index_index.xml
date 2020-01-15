@@ -26,7 +26,7 @@
                                                                 <item name="pmccoingroup" xsi:type="array">
                                                                     <item name="component" xsi:type="string">Liftmode_PMCCoinGroup/js/view/payment/pmccoingroup</item>
                                                                     <item name="methods" xsi:type="array">
-                                                                        <item name="liftmode_pmccoingroup" xsi:type="array">
+                                                                        <item name="pmccoingroup" xsi:type="array">
                                                                             <item name="isBillingAddressRequired" xsi:type="boolean">true</item>
                                                                         </item>
                                                                     </item>

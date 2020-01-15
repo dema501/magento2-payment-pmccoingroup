@@ -2,7 +2,7 @@
     <type name="Magento\Payment\Model\CcGenericConfigProvider">
         <arguments>
             <argument name="methodCodes" xsi:type="array">
-                <item name="liftmode_pmccoingroup" xsi:type="const">Liftmode\PMCCoinGroup\Model\PMCCoinGroup::CODE</item>
+                <item name="pmccoingroup" xsi:type="const">Liftmode\PMCCoinGroup\Model\PMCCoinGroup::CODE</item>
             </argument>
         </arguments>
     </type>
