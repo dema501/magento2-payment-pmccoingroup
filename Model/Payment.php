@@ -2,7 +2,7 @@
 
 namespace Liftmode\PMCCoinGroup\Model;
 
-class PMCCoinGroup extends \Magento\Payment\Model\Method\Cc
+class Payment extends \Magento\Payment\Model\Method\Cc
 {
     const CODE = 'pmccoingroup';
 
@@ -13,25 +13,61 @@ class PMCCoinGroup extends \Magento\Payment\Model\Method\Cc
     protected $_canRefund = false;
     protected $_canVoid = false;
 
-    private   $_curl;
-    private   $_encryptor;
+    protected $_scopeConfig;
+    protected $_curl;
+    protected $_encryptor;
 
     /**
-     * @param \Ecomail\Ecomail\Helper\Data             $helper
-     * @param \Magento\Customer\Model\CustomerRegistry $customerRegistry
+     * @param \Magento\Framework\Model\Context $context
+     * @param \Magento\Framework\Registry $registry
+     * @param \Magento\Framework\Api\ExtensionAttributesFactory $extensionFactory
+     * @param \Magento\Framework\Api\AttributeValueFactory $customAttributeFactory
+     * @param \Magento\Payment\Helper\Data $paymentData
+     * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
+     * @param Logger $logger
+     * @param \Magento\Framework\Module\ModuleListInterface $moduleList
+     * @param \Magento\Framework\Stdlib\DateTime\TimezoneInterface $localeDate
+     * @param \Magento\Framework\Model\ResourceModel\AbstractResource $resource
+     * @param \Magento\Framework\Data\Collection\AbstractDb $resourceCollection
+     * @param array $data
+     * @SuppressWarnings(PHPMD.ExcessiveParameterList)
      */
     public function __construct(
-        \Magento\Framework\HTTP\Client\Curl $curl,
+        \Magento\Framework\Model\Context $context,
+        \Magento\Framework\Registry $registry,
+        \Magento\Framework\Api\ExtensionAttributesFactory $extensionFactory,
+        \Magento\Framework\Api\AttributeValueFactory $customAttributeFactory,
+        \Magento\Payment\Helper\Data $paymentData,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Psr\Log\LoggerInterface $logger,
-        \Magento\Framework\Encryption\EncryptorInterface $encryptor
+        \Magento\Payment\Model\Method\Logger $logger,
+        \Magento\Framework\Module\ModuleListInterface $moduleList,
+        \Magento\Framework\Stdlib\DateTime\TimezoneInterface $localeDate,
+        \Magento\Framework\Model\ResourceModel\AbstractResource $resource = null,
+        \Magento\Framework\Data\Collection\AbstractDb $resourceCollection = null,
+        \Magento\Framework\HTTP\Client\Curl $curl,
+        \Magento\Framework\Encryption\EncryptorInterface $encryptor,
+        array $data = []
     ) {
-        parent::__construct();
- 
-        $this->_scopeConfig      = $scopeConfig;
+        $this->_scopeConfig	     = $scopeConfig;
         $this->_curl             = $curl;
         $this->_encryptor        = $encryptor;
+
+        parent::__construct(
+            $context,
+            $registry,
+            $extensionFactory,
+            $customAttributeFactory,
+            $paymentData,
+            $scopeConfig,
+            $logger,
+            $moduleList,
+            $localeDate,
+            $resource,
+            $resourceCollection,
+            $data
+        );
     }
+
 
     /**
      * Authorize a payment.
