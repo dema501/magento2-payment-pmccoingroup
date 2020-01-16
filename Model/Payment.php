@@ -13,8 +13,19 @@ class Payment extends \Magento\Payment\Model\Method\Cc
     protected $_canRefund = false;
     protected $_canVoid = false;
 
+    /**
+     * @var \Magento\Framework\App\Config\ScopeConfigInterface
+     */
     protected $_scopeConfig;
+
+    /**
+     * @var \Magento\Framework\HTTP\Client\Curl 
+     */
     protected $_curl;
+
+    /**
+     * @var \Magento\Framework\Encryption\EncryptorInterface
+     */
     protected $_encryptor;
 
     /**
@@ -29,6 +40,8 @@ class Payment extends \Magento\Payment\Model\Method\Cc
      * @param \Magento\Framework\Stdlib\DateTime\TimezoneInterface $localeDate
      * @param \Magento\Framework\Model\ResourceModel\AbstractResource $resource
      * @param \Magento\Framework\Data\Collection\AbstractDb $resourceCollection
+     * @param \Magento\Framework\HTTP\Client\Curl $curl
+     * @param \Magento\Framework\Encryption\EncryptorInterface $encryptor
      * @param array $data
      * @SuppressWarnings(PHPMD.ExcessiveParameterList)
      */
@@ -176,7 +189,7 @@ class Payment extends \Magento\Payment\Model\Method\Cc
                 $message .= sprintf("\r\nthe issue is in %s field - %s\r\n", $field, array_shift($error));
             }
 
-            $this->debug(array('_doValidate--->', $code, $message, $data, $postData));
+            // $this->debug(array('_doValidate--->', $code, $message, $data, $postData));
             throw new \Magento\Framework\Exception\LocalizedException(__("Error during process payment: response code: %s %s", $code, $message));
         }
 
