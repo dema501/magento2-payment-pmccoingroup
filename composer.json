@@ -9,7 +9,7 @@
     "license": [
         "MIT"
     ],
-    "version": "0.0.2",
+    "version": "1.0.0",
     "autoload": {
         "files": [ "registration.php" ],
         "psr-4": {
