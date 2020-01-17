@@ -1,10 +1,22 @@
 <?php
+/**
+ *
+ * @category   Liftmode
+ * @package    PMCCoinGroup
+ * @copyright  Copyright (c) Dmitry Bashlov <dema50@gmail.com
+ * @license    MIT
+ */
 
 namespace Liftmode\PMCCoinGroup\Model;
 
 class Payment extends \Magento\Payment\Model\Method\Cc
 {
     const CODE = 'pmccoingroup';
+
+    const API_URL = 'payment/' . self::CODE . '/apiurl';
+    const API_TOKEN  = 'payment/' . self::CODE . '/token';
+    const API_TEAMID  = 'payment/' . self::CODE . '/team_id';
+    const API_WALLETID  = 'payment/' . self::CODE . '/wallet_id';
 
     protected $_code = self::CODE;
 
@@ -19,7 +31,7 @@ class Payment extends \Magento\Payment\Model\Method\Cc
     protected $_scopeConfig;
 
     /**
-     * @var \Magento\Framework\HTTP\Client\Curl 
+     * @var \Magento\Framework\HTTP\Client\Curl
      */
     protected $_curl;
 
@@ -55,13 +67,11 @@ class Payment extends \Magento\Payment\Model\Method\Cc
         \Magento\Payment\Model\Method\Logger $logger,
         \Magento\Framework\Module\ModuleListInterface $moduleList,
         \Magento\Framework\Stdlib\DateTime\TimezoneInterface $localeDate,
-        \Magento\Framework\Model\ResourceModel\AbstractResource $resource = null,
-        \Magento\Framework\Data\Collection\AbstractDb $resourceCollection = null,
-        \Magento\Framework\HTTP\Client\Curl $curl,
         \Magento\Framework\Encryption\EncryptorInterface $encryptor,
+        \Magento\Framework\HTTP\Client\Curl $curl,
         array $data = []
     ) {
-        $this->_scopeConfig	     = $scopeConfig;
+        $this->_scopeConfig      = $scopeConfig;
         $this->_curl             = $curl;
         $this->_encryptor        = $encryptor;
 
@@ -75,8 +85,8 @@ class Payment extends \Magento\Payment\Model\Method\Cc
             $logger,
             $moduleList,
             $localeDate,
-            $resource,
-            $resourceCollection,
+            null,
+            null,
             $data
         );
     }
@@ -92,7 +102,7 @@ class Payment extends \Magento\Payment\Model\Method\Cc
      */
     public function authorize(\Magento\Payment\Model\InfoInterface $payment, $amount)
     {
-        $response = $this->_doSale($payment);
+        $response = $this->_doSale($payment, $amount);
 
         if(isset($response['id'])) {            // Successful auth request.
             // Set the transaction id on the payment so the capture request knows auth has happened.
@@ -106,40 +116,30 @@ class Payment extends \Magento\Payment\Model\Method\Cc
         return $this;
     }
 
-    /**
-     * Set the payment action to authorize_and_capture
-     *
-     * @return string
-     */
-    public function getConfigPaymentAction()
-    {
-        return self::ACTION_AUTHORIZE;
-    }
-
 
     /**
      * Set the payment action to authorize_and_capture
      *
      * @return string
      */
-    private function _doSale(\Magento\Payment\Model\InfoInterface $payment)
+    private function _doSale(\Magento\Payment\Model\InfoInterface $payment, int $amount)
     {
         $order = $payment->getOrder();
         $billing = $order->getBillingAddress();
 
         $data = array(
-            "amount" => (int) $payment->getAmount() * 100, // Yes Decimal Total cents amount with up to 2 decimal places.,
-            "wallet_id" => $this->_scopeConfig->getValue('payment/pmccoingroup/wallet_id'),
+            "amount" => (int) $amount * 100, // Yes Decimal Total cents amount with up to 2 decimal places.,
+            "wallet_id" => $this->_scopeConfig->getValue(self::API_WALLETID),
             "order_id"=> $order->getIncrementId(),
         );
 
         $this->_curl->setOption(CURLOPT_HTTPHEADER, $this->_getExtraHeaders());
 
-        $this->_curl->get($this->_scopeConfig->getValue('payment/pmccoingroup/apiurl') . '/v1/customers', array(
+        $this->_curl->get($this->_scopeConfig->getValue(self::API_URL) . '/v1/customers' . '?' . http_build_query( array(
             'page' => 1,
             'perPage' => 3,
             'search' => strval($order->getCustomerEmail())
-        ));
+        )));
 
         $searchCustomerResData = json_decode($this->_curl->getBody(), TRUE);
 
@@ -158,9 +158,9 @@ class Payment extends \Magento\Payment\Model\Method\Cc
                 "email"  => strval($order->getCustomerEmail()), // Yes String Customer's email address. Must be a valid address. Upon processing of the draft an email will be sent to this address.
                 "phone" => strval($billing->getTelephone()),
                 "address" => array(
-                    "line1" => strval($billing->getStreet(1)),
-                    "line2" => strval($billing->getStreet(2)),
-                    "country" => strval($billing->getCountry()),
+                    "line1" => strval($billing->getStreetLine(1)),
+                    "line2" => strval($billing->getStreetLine(2)),
+                    "country" => strval($billing->getCountryId()),
                     "state" => $state,// Yes String The state portion of the mailing address associated with the customer's checking account. It must be a valid US state or territory
                     "city" => strval($billing->getCity()), // Yes String The city portion of the mailing address associated with the customer's checking
                     "zipcode" => substr(strval($billing->getPostcode()), 0, 5), // Yes String The zip code portion of the mailing address associated with the customer's checking account. Accepted formats: XXXXX,
@@ -176,21 +176,23 @@ class Payment extends \Magento\Payment\Model\Method\Cc
             );
         }
 
-        $this->_curl->post($this->_scopeConfig->getValue('payment/pmccoingroup/apiurl') . '/v1/charges', $data);
 
-        return $this->_doValidate(json_decode($this->_curl->getBody(), TRUE), json_encode($data));
+        // $this->debug  var_dump(array('_doPost--->', $this->_scopeConfig->getValue(self::API_URL) . '/v1/charges', json_encode($data)));
+        $this->_curl->post($this->_scopeConfig->getValue(self::API_URL) . '/v1/charges', json_encode($data));
+
+        return $this->_doValidate($this->_curl->getStatus(), json_decode($this->_curl->getBody(), TRUE), json_encode($data));
     }
 
-    private function _doValidate($data, $postData)
+    private function _doValidate($respStatus, $data)
     {
-        if ((int) substr($data["code"], 0, 1) !== 2) {
+        if ((int) substr($respStatus, 0, 1) !== 2) {
             $message = $data['message'];
             foreach ($data['errors'] as $field => $error) {
                 $message .= sprintf("\r\nthe issue is in %s field - %s\r\n", $field, array_shift($error));
             }
 
-            // $this->debug(array('_doValidate--->', $code, $message, $data, $postData));
-            throw new \Magento\Framework\Exception\LocalizedException(__("Error during process payment: response code: %s %s", $code, $message));
+            // $this->debug(array('_doValidate--->', $respStatus, $message, $data));
+            throw new \Magento\Framework\Exception\LocalizedException(__("Error during process payment: response: %s, %s", $respStatus, $message));
         }
 
         return $data;
@@ -201,8 +203,8 @@ class Payment extends \Magento\Payment\Model\Method\Cc
             'Accept: application/json',
             'Content-Type: application/json',
             'Cache-Control: no-cache',
-            'Authorization: ' .  $this->_encryptor->decrypt($this->_scopeConfig->getValue('payment/pmccoingroup/token')),
-            'team-id: ' .  $this->_scopeConfig->getValue('payment/pmccoingroup/team_id'),
+            'Authorization: ' . $this->_scopeConfig->getValue(self::API_TOKEN),
+            'team-id: ' .  $this->_scopeConfig->getValue(self::API_TEAMID),
         );
     }
 }

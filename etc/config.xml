@@ -1,5 +1,13 @@
 <?xml version="1.0"?>
-
+<!--
+**
+ *
+ * @category   Liftmode
+ * @package    PMCCoinGroup
+ * @copyright  Copyright (c) Dmitry Bashlov <dema50@gmail.com
+ * @license    MIT
+ *
+ -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
     <default>
         <payment>
