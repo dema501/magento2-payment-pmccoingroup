@@ -13,22 +13,20 @@ class Payment extends \Magento\Payment\Model\Method\Cc
 {
     const CODE = 'pmccoingroup';
 
-    const API_URL = 'payment/' . self::CODE . '/apiurl';
-    const API_TOKEN  = 'payment/' . self::CODE . '/token';
-    const API_TEAMID  = 'payment/' . self::CODE . '/team_id';
-    const API_WALLETID  = 'payment/' . self::CODE . '/wallet_id';
-
     protected $_code = self::CODE;
 
+    protected $_isGateway = true;
     protected $_canAuthorize = true;
     protected $_canCapture = false;
+    protected $_canCapturePartial = false;
     protected $_canRefund = false;
+    protected $_canRefundInvoicePartial = false;
     protected $_canVoid = false;
+    protected $_supportedCurrencyCodes = array('USD');
 
-    /**
-     * @var \Magento\Framework\App\Config\ScopeConfigInterface
-     */
-    protected $_scopeConfig;
+    protected $_minAmount = null;
+    protected $_maxAmount = null;
+
 
     /**
      * @var \Magento\Framework\HTTP\Client\Curl
@@ -71,10 +69,6 @@ class Payment extends \Magento\Payment\Model\Method\Cc
         \Magento\Framework\HTTP\Client\Curl $curl,
         array $data = []
     ) {
-        $this->_scopeConfig      = $scopeConfig;
-        $this->_curl             = $curl;
-        $this->_encryptor        = $encryptor;
-
         parent::__construct(
             $context,
             $registry,
@@ -89,6 +83,12 @@ class Payment extends \Magento\Payment\Model\Method\Cc
             null,
             $data
         );
+
+        $this->_curl             = $curl;
+        $this->_encryptor        = $encryptor;
+
+        $this->_minAmount = $this->getConfigData('min_order_total');
+        $this->_maxAmount = $this->getConfigData('max_order_total');
     }
 
 
@@ -116,6 +116,41 @@ class Payment extends \Magento\Payment\Model\Method\Cc
         return $this;
     }
 
+    /**
+     * Determine method availability based on quote amount and config data
+     *
+     * @param \Magento\Quote\Api\Data\CartInterface|null $quote
+     * @return bool
+     */
+    public function isAvailable(\Magento\Quote\Api\Data\CartInterface $quote = null)
+    {
+        if ($quote && (
+            $quote->getBaseGrandTotal() < $this->_minAmount
+            || ($this->_maxAmount && $quote->getBaseGrandTotal() > $this->_maxAmount))
+        ) {
+            return false;
+        }
+
+        if (!$this->getConfigData('token') || !$this->getConfigData('team_id') || !$this->getConfigData('wallet_id')) {
+            return false;
+        }
+
+        return parent::isAvailable($quote);
+    }
+
+    /**
+     * Availability for currency
+     *
+     * @param string $currencyCode
+     * @return bool
+     */
+    public function canUseForCurrency($currencyCode)
+    {
+        if (!in_array($currencyCode, $this->_supportedCurrencyCodes)) {
+            return false;
+        }
+        return true;
+    }
 
     /**
      * Set the payment action to authorize_and_capture
@@ -129,13 +164,13 @@ class Payment extends \Magento\Payment\Model\Method\Cc
 
         $data = array(
             "amount" => (int) $amount * 100, // Yes Decimal Total cents amount with up to 2 decimal places.,
-            "wallet_id" => $this->_scopeConfig->getValue(self::API_WALLETID),
+            "wallet_id" => $this->getConfigData('wallet_id'),
             "order_id"=> $order->getIncrementId(),
         );
 
         $this->_curl->setOption(CURLOPT_HTTPHEADER, $this->_getExtraHeaders());
 
-        $this->_curl->get($this->_scopeConfig->getValue(self::API_URL) . '/v1/customers' . '?' . http_build_query( array(
+        $this->_curl->get($this->getConfigData('apiurl') . '/v1/customers' . '?' . http_build_query( array(
             'page' => 1,
             'perPage' => 3,
             'search' => strval($order->getCustomerEmail())
@@ -177,8 +212,8 @@ class Payment extends \Magento\Payment\Model\Method\Cc
         }
 
 
-        // $this->debug  var_dump(array('_doPost--->', $this->_scopeConfig->getValue(self::API_URL) . '/v1/charges', json_encode($data)));
-        $this->_curl->post($this->_scopeConfig->getValue(self::API_URL) . '/v1/charges', json_encode($data));
+        // $this->debug  var_dump(array('_doPost--->', $this->getConfigData('apiurl') . '/v1/charges', json_encode($data)));
+        $this->_curl->post($this->getConfigData('apiurl') . '/v1/charges', json_encode($data));
 
         return $this->_doValidate($this->_curl->getStatus(), json_decode($this->_curl->getBody(), TRUE), json_encode($data));
     }
@@ -203,8 +238,8 @@ class Payment extends \Magento\Payment\Model\Method\Cc
             'Accept: application/json',
             'Content-Type: application/json',
             'Cache-Control: no-cache',
-            'Authorization: ' . $this->_scopeConfig->getValue(self::API_TOKEN),
-            'team-id: ' .  $this->_scopeConfig->getValue(self::API_TEAMID),
+            'Authorization: ' . $this->getConfigData('token'),
+            'team-id: ' .  $this->getConfigData('team_id'),
         );
     }
 }
